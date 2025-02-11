@@ -106,6 +106,18 @@ fi
 
 echo "[*] MASTER_LOG_FILE: $MASTER_LOG_FILE, MASTER_LOG_POS: $MASTER_LOG_POS"
 
+# lấy thông tin Version Mysql Trên máy chủ đã có
+echo "[*] Lấy thông tin version Mysql..."
+
+MYSQL_VERSION=$(run_remote "$MASTER_IP" "$MASTER_SSH_USER" "$MASTER_SSH_PASSWORD" \
+    "mysql -V | sed -E 's/.*Distrib ([0-9]+\.[0-9]+\.[0-9]+).*/\1/'")
+echo " Phiên bản Mysql có Version là $MYSQL_VERSION"
+
+if [ -z "$MYSQL_VERSION" ]; then
+    echo "[ERROR] Không lấy được thông tin MYSQL_VERSION. Kiểm tra lại cấu hình MySQL Master hoặc kết nối mạng."
+    exit 1
+fi
+
 ##############################################
 # 4. TẠO DUMP TOÀN BỘ DATABASE TRÊN MASTER
 ##############################################
@@ -125,7 +137,7 @@ run_remote_scp "$MASTER_SSH_PASSWORD" "$MASTER_SSH_USER@$MASTER_IP:$DUMP_FILE" "
 echo "[*] Cài đặt MySQL trên SLAVE ($SLAVE_IP)..."
 # Cài MySQL nếu chưa có (sử dụng DEBIAN_FRONTEND=noninteractive để tránh prompt)
 run_remote "$SLAVE_IP" "$SLAVE_SSH_USER" "$SLAVE_SSH_PASSWORD" \
-    "apt-get update && DEBIAN_FRONTEND=noninteractive apt install -y mysql-server=8.0.*"
+    "apt-get update && DEBIAN_FRONTEND=noninteractive apt install -y mysql-server=$MYSQL_VERSION"
 
 # Cấu hình file MySQL cho SLAVE: đặt server-id khác (ví dụ: 2)
 SLAVE_MY_CNF="/etc/mysql/mysql.conf.d/mysqld.cnf"
